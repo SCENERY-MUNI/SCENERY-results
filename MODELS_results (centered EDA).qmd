@@ -1,0 +1,1254 @@
+---
+title: "URBAN analysis -- FDA"
+subtitle: "Functional models for HR and EDA -- results"
+language: 
+  title-block-author-single:  Author
+  title-block-published: Date
+author: "T. Pompa"
+date: today
+lightbox:
+  match: auto
+  effect: fade
+crossref:
+  fig-title: Figure
+  tbl-title: Table
+format: 
+  html: 
+    page-layout: full
+    grid:
+      sidebar-width: 320px
+      body-width: 1000px
+      margin-width: 25px
+    embed-resources: true
+    toc: true
+    toc-location: left
+    toc-title: Table of contents
+    toc-expand: 2
+    number-sections: true
+    number-depth: 3
+    # html-math-method: katex
+    smooth-scroll: true
+    link-external-newwindow: true
+    theme: materia
+    css: style/template.css
+    linkcolor: '#085391'
+    highlight-style: pygments
+    code-fold: show
+    code-overflow: wrap
+    code-line-numbers: false
+    code-copy: true
+    code-link: true
+    code-block-bg: true     
+    # code-block-border-left: "#e3e3e3"
+    code-tools:
+      source: false
+      toggle: true
+      caption: Code
+    backgroundcolor: white
+    show-code: true
+    tbl-cap-location: top
+    fig-align: center
+    tbl-align: center
+    mathjax: default
+---
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE, 
+  message = FALSE,
+  fig.width = 6, 
+  fig.height = 4, 
+  fig.align = 'center'
+)
+```
+
+```{r}
+#| echo: false
+# Load libraries
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+```
+
+> This document provides a brief overview of the functional linear models for Heart Rate (**HR**) and Electrodermal Activity (**EDA**) fitted as part of the FDA analysis in the URBAN study.
+
+The first section introduces the analysis, the functional models, and the results. We explain the [structure of the outputs]{.darkblue}, the interpretation of the graphical outputs, and the numerical characteristics of the models.
+
+The second section focuses on the [fitted models for HR and EDA]{.darkblue}. We highlight a subset of models that appear most suitable for capturing the functional responses. For these selected models, both numerical summaries and graphical outputs are provided.
+
+::: {.callout-note}
+This document is intended as a concise summary of the selected models. For a detailed description of the full analysis procedure, including 
+
+- data preprocessing,
+- registration,
+- smoothing, and
+- model fitting,
+
+please refer to `Z:/GAMU-STRECITY/04_Codes/FDA/CODE/URBAN_analysis.ipynb` or its corresponding *HTML* version.
+:::
+
+# Introduction to functional models
+
+To model the functional responses (HR, EDA) based on other functional covariates (noise, altitude, speed, pollution, etc.), we use the [concurrent functional linear model]{.darkblue}.
+
+::: {.callout-tip}
+## Concurrent Functional Linear Model
+This model relates the value of the outcome $y$ at time $t$ (i.e., $y_i(t)$) to the values of covariates $z_j$ observed at the same time $t$ (i.e., $z_{ij}(t)$). Formally, it can be written as
+$$
+y_i(t) = \beta_0(t) + \sum_{j=1}^K \beta_j(t) z_{ij}(t) + \varepsilon_i(t),
+$$ {#eq-model} 
+where $K$ is the number of covariates, and $\varepsilon_i(t)$ denotes a random error term for subject $i = 1, 2, \dots, n$. 
+:::
+
+All models presented in @sec-HRmodels and @sec-EDAmodels follow the general form in @eq-model. After preprocessing the raw data into functional form (including registration and smoothing), the models were fitted using the `fRegress()` function from the `fda` package. 
+
+## Example model
+
+To illustrate the structure of the results and to explain the graphical and numerical outputs of a functional linear model, consider the following simple example:
+
+::: {.mathbox}
+$$
+\text{Heart rate}_i(t) = \beta_0(t) + \beta_1(t) \cdot \text{Altitude}_i(t) + \beta_2(t) \cdot \text{Noise}_i(t) + \varepsilon_i(t), \quad i = 1, \dots, 39.
+$$ {#eq-modelHR}
+:::
+In this model for HR, two [functional covariates]{.darkblue} are included: *Altitude* and *Noise*. The dataset consists of [39 observations]{.darkblue}, corresponding to the participants with valid recordings for all variables used in the model.
+
+This example will serve to demonstrate how to think of the model outputs, including both the graphical displays and the numerical characteristics.
+
+## Observed vs. estimated curves
+
+The first output of the model is a [plot of the observed trajectories]{.darkblue} of the outcome variable (here, Heart Rate) together [with the trajectories estimated by the fitted functional model]{.darkblue}. Estimated curves are shown as dashed lines, while observed curves are shown as solid lines. Even with this simple model, we see that for the vast majority of participants the observed and estimated trajectories align well.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| label: fig-curves
+#| fig-cap: "Observed and estimated trajectories of the outcome variable fitted by the model."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>%
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model_samples.png")
+```
+
+## Functional $R^2$ {#sec-R2}
+
+One useful characteristic of the fitted functional linear model is [the functional $R^2$]{.darkblue}, an analogue of the classical coefficient of determination $R^2$ in the setting of functional data analysis. As in the classical case, it [quantifies the proportion of total variability in the response curves that is explained by the model]{.darkblue}.
+
+Unlike the scalar $R^2$, the functional $R^2$ varies over time and can therefore be visualized as a curve. To facilitate comparisons between models, we also summarize it with [numerical descriptors]{.darkblue}:
+
+::: {.mathbox}
+- Maximum $R^2$ (`maxR2`): the maximum value of functional $R^2$ over the observed interval (higher is better),
+- Integrated $R^2$ (`integratedR2`): the area under the functional $R^2$ curve (higher is better, although functional $R^2$ may occasionally take negative values on some subintervals).
+:::
+
+We also compute a third numerical characteristic of the model, [the Root Mean Square Error ($RMSE$)]{.darkblue}, which summarizes the quality of the model fit as the square root of the average of the mean squared error curve, calculated from the differences between the observed and estimated curves.
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model.RData")
+
+model_2$df_res_metrics[, 1:3] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE)
+```
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>% 
+  knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/R2.png")
+```
+
+## Functional $F$-test {#sec-Ftest}
+
+The functional [permutation $F$-test]{.darkblue} is a way to check if a functional predictors really matters in a functional linear regression model (a test of no effect in functional linear regression). It [compares the fit of the model to what would happen if the data were shuffled randomly]{.darkblue}, giving a sense of whether the observed patterns are meaningful or just due to chance.
+
+Similarly to the functional $R^2$, the $F$-statistic from the functional [permutation $F$-test]{.darkblue} varies over time and can therefore be visualized as a curve. The outputs of the permutation $F$-test are:
+
+::: {.mathbox}
+- $F_{obs}$ (`Fobs`): the observed maximal $F$-statistic (the maximal value of the pointwise $F$-statistic).
+- $q$-quantile (`qval`): the $q$th quantile of the null distribution to compare to the observed $F$-statistic ($q = 0.95$).
+- $p$-value (`pval`): the observed $p$-value of the permutation test.
+:::
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model.RData")
+
+model_2$df_res_metrics[, 4:6] %>% 
+  as.data.frame(row.names = c("permutation $F$-test outputs")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE)
+```
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>% 
+  knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/F_res.png")
+```
+
+## Regression parameters {#sec-GET}
+
+All previous graphical and numerical outputs of the functional [model @eq-modelHR] describe the quality of the model fit considering all covariates together.
+
+To understand the effect of [each functional covariate separately]{.darkblue} on the outcome (HR), we now focus on the estimated functional regression parameters $\widehat{\beta_0}(t)$ and $\widehat{\beta_j}(t), j = 1, 2$. Additionally, to assess the [significance of the covariates both locally and globally]{.darkblue}, we calculate and visualize:
+
+- **Pointwise bootstrap confidence intervals** for the regression parameters ${\beta_0}(t)$ and ${\beta_j}(t), j = 1, 2$ (local, pointwise significance).
+- **Global envelope**: using the `GET` package, we construct a $95\%$ global envelope for the test statistic of $H_0: \beta_j(t) = 0, j = 1, 2$.
+
+::: {.callout-tip}
+## Global Envelope
+The [global envelope test]{.darkblue} evaluates the significance of a covariate globally across the [entire time interval]{.darkblue}. It provides a [nonparametric $p$-value]{.darkblue}, indicating whether the covariate has a significant effect on the outcome.
+
+Importantly, the test is able to find not only if the factor of interest is significant, but also [which functional domain is responsible for the potential rejection]{.darkblue}. 
+
+To inspect this visually, we plot the global envelope using the regression coefficients as test functions. If the $p$-value of the global envelope test is significant, at least one time point exists where the regression coefficient $\widehat{\beta}_j(t)$ [exits the global envelope]{.darkblue}, revealing the domain responsible for the effect. In these intervals, the covariate has a [significant impact on the outcome variable]{.darkblue}.
+:::
+
+> Regression parameter $\beta_0$
+
+The [functional intercept $\widehat{\beta_0}(t)$]{.darkblue} represents the mean heart rate over time when all covariates are zero (the baseline curve at the reference level of the covariates). Any deviations from $\beta_0(t)$ in the observed heart rate curves are captured by the effects of $\beta_1(t)$ and $\beta_2(t)$, which show how altitude and noise influence heart rate at each time point.
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the estimated functional regression parameter $\\widehat{\\beta}_0(t)$ with bootstrap CI."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta_0_CI.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>% 
+  knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta_0_CI.png")
+```
+
+> Regression parameter $\beta_j$
+
+For the regression parameters $\beta_1$ and $\beta_2$, we have both bootstrap confidence intervals and global envelopes. In the plots below, we can interpret the elements as follows:
+
+- *Blue solid line*: the [fitted functional regression parameter]{.darkblue} from our [model @eq-modelHR]. This curve is used to estimate the heart rate curves shown in @fig-curves. 
+- *Bright grey lines*: [pointwise bootstrap confidence intervals]{.darkblue} for the regression parameter (blue line). We focus on the subintervals where the CI does **not** cover zero.
+- *Black solid line*: [estimated test function]{.darkblue} from the GET approach. It should mimic the behavior of the blue line from our model.
+- *Grey area*: [global envelope]{.darkblue} corresponding to the global envelope test. We focus on the subintervals where the test function exits the global envelope (highlighted with red points).
+
+Additionally, in the upper left corner of each plot, the [$p$-value indicates the overall significance]{.darkblue} of the covariate of interest.
+
+::: columns
+::: {.column width="48%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the estimated functional regression parameter $\\widehat{\\beta_1}(t)$ for **ALTITUDE** with bootstrap CI and global envelope."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>% 
+  knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta1_GET.png")
+```
+:::
+
+::: {.column width="48%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the estimated functional regression parameter $\\widehat{\\beta_2}(t)$ for **NOISE** with bootstrap CI and global envelope."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) %>% 
+  knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta2_GET.png")
+```
+:::
+:::
+
+# Models for HR {#sec-HRmodels}
+
+In this section, we analyze the functional models for [heart rate]{.darkblue}. From the significant models (those with permutation $F$-test $p$-value ${}< 0.05$), we identify the most suitable candidates. The following section presents the results of these selected models.
+
+We begin by listing all fitted models ([**All considered models**]{.panelorange}). More complex models are not included, as they are computationally demanding and in some cases fail due to singularities. For each model, we report key numerical characteristics: the number of curves ($N$), $RMSE$, functional $R^2$ descriptors, and the $F$-test result. The models are [ordered by decreasing maximum $R^2$]{.darkblue}.
+
+In the **Model formula** column, covariates are color-coded according to their significance assessed by the global envelope test -- [red for $p < 0.05$]{.myred}, [blue for $p \in [0.05, 0.1)$]{.myblue}.
+
+Next, we filter only those models significant under the functional permutation $F$-test ([**Significant models**]{.panelorange}). From this subset, we select a few final models that we consider most appropriate for describing HR dynamics over time ([**Final selected models**]{.panelorange}). The main selection criterion is the maximum $R^2$ -- higher values indicate better fit, though caution is needed when comparing models based on different sample sizes ($N$).
+
+```{r}
+#| echo: false
+# We load the HR data and rename the column model to contain which covariate is significant 
+data_HR <- read.csv("Z:/GAMU-STRECITY/04_Codes/FDA/model_comparison_HR.csv") %>% 
+  filter(model != "HR_alt_noise_temp_body_acc")
+
+# ]{.myred} ... p < 0.05
+# ]{.myblue} ... p ∈ (0.05, 0.1)
+
+data_HR <- data_HR %>% 
+  mutate(model = c(
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + [steps]{.myred} + PM1",    ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + [steps]{.myred} + PM25",   ##
+  "HR $\\sim$ altitude + noise + [speed]{.myred} + PM25",                       ##
+  "HR $\\sim$ altitude + noise + [speed]{.myred} + PM1",                        ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + [speed]{.myred}",          ##
+  "HR $\\sim$ [altitude]{.myred} + noise + temperature + [speed]{.myred}",      ##
+  "HR $\\sim$ [altitude]{.myred} + noise + temperature + [steps]{.myred}",      ##
+  "HR $\\sim$ [altitude]{.myred} + noise + [steps]{.myred}",                    ##
+  "HR $\\sim$ altitude + noise + [body_temperature]{.myred} + PM25",            ##
+  "HR $\\sim$ [altitude]{.myred} + [steps]{.myred} + Sex",                      ##
+  "HR $\\sim$ altitude + [speed]{.myred} + PM25",                               ##        
+  "HR $\\sim$ altitude + [speed]{.myred} + PM1",                                ## 
+  "HR $\\sim$ altitude + noise + [body_temperature]{.myblue} + PM1",            ##
+  "HR $\\sim$ [altitude]{.myred} + [speed]{.myred} + Sex",                      ##
+  "HR $\\sim$ [altitude]{.myred} + noise + [acceleration]{.myred} + PM25",      ##
+  "HR $\\sim$ [altitude]{.myblue} + noise + [temperature (Entrant)]{.myred}",   ##
+  "HR $\\sim$ [altitude]{.myblue} + noise + [acceleration]{.myred} + PM1",      ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + temperature + [acceleration]{.myred}",##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + acceleration + [Sex]{.myblue}", ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + [acceleration]{.myblue}",  ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred} + [body_temperature]{.myblue}", ##
+  "HR $\\sim$ [altitude]{.myred} + body_temperature",                           ##
+  "HR $\\sim$ altitude + noise + PM1",                                          ##
+  "HR $\\sim$ altitude + noise + PM25",                                         ##
+  "HR $\\sim$ air_pressure + [noise]{.myred} + temperature",                    ##
+  "HR $\\sim$ [altitude]{.myred} + noise + temperature (Empatica)",             ##
+  "HR $\\sim$ [altitude]{.myred} + [noise]{.myred}",                            ##
+  "HR $\\sim$ air_pressure + [noise]{.myred}",                                  ##
+  "HR $\\sim$ [altitude]{.myblue} + temperature + PM25",                        ##
+  "HR $\\sim$ [altitude]{.myblue} + temperature + PM1",                         ##
+  "HR $\\sim$ [altitude]{.myred} + noise + [Sex]{.myblue}"                      ##
+))
+```
+
+::: panel-tabset
+## [All considered models]{.panelorange}
+
+All functional models include either air pressure or altitude, and most also incorporate an activity-related predictor such as acceleration, speed, or steps.
+
+```{r}
+#| echo: false
+data_HR %>% 
+  select(!c(qval, Fobs)) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+## [Significant models]{.panelorange}
+
+Final selected models are [highlighted in blue]{style="background-color:#cce5ff; padding:0.1em 0.2em; border-radius:2px;"}.
+
+```{r}
+#| echo: false
+#| results: asis
+df_tab <- data_HR %>% 
+  select(!c(qval, Fobs)) %>% 
+  filter(pval < 0.05) 
+
+df_tab[df_tab$X %in% c(8, 17, 20, 12), 2] <- kableExtra::cell_spec(df_tab[df_tab$X %in% c(8, 17, 20, 12), 2], background = '#cce5ff')
+
+df_tab %>% knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+## [Final selected models]{.panelorange}
+
+```{r}
+#| echo: false
+data_HR %>% 
+  select(!c(qval, Fobs)) %>% 
+  filter(X %in% c(8, 17, 20, 12)) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+We selected the following models:
+
+- **HR $\sim$ [altitude]{.myred} + [noise]{.myred} + [steps]{.myred} + PM25** -- this model achieves the highest maximum $R^2$ among all candidates. Including PM25 is more relevant for short-term dependence then PM1, as it reflects acute effect. The model shows strong explanatory power, with both high integrated $R^2$ and low $RMSE$, and is overall highly significant.
+- **HR $\sim$ [altitude]{.myred} + [noise]{.myred}** -- serves as a baseline model with only two predictors, yet still statistically significant. It is easy to interpret and provides a useful benchmark for evaluating the added value of more complex models. While not achieving the top $R^2$, it performs reasonably well given its simplicity.
+- **HR $\sim$ [altitude]{.myred} + [noise]{.myred} + [body\_temperature]{.myblue}** -- an extension of the baseline model that introduces body temperature as an additional predictor. This variable shows partial significance.
+- **HR $\sim$ [altitude]{.myred} + [noise]{.myred} + [speed]{.myred}** -- another extension of the baseline model, where speed is added as a highly significant covariate. This model combines high maximum $R^2$ with a large sample size ($N$), matching that of the baseline model.
+:::
+
+## HR $\sim$ alt + noise + steps + PM25 {#sec-HRmod1}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{Heart rate}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Altitude}_i(t) +
+\beta_2(t) \cdot \text{Noise}_i(t) + 
+\beta_3(t) \cdot \text{steps}_i(t) + 
+\beta_4(t) \cdot \text{PM25}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2, 3, 4$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="25%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta1_GET.png")
+```
+:::
+
+::: {.column width="25%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta2_GET.png")
+```
+:::
+
+::: {.column width="25%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Steps**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta3_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta3_GET.png")
+```
+:::
+
+::: {.column width="25%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **PM25**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta4_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_steps_PM25_N200/beta4_GET.png")
+```
+:::
+:::
+
+## HR $\sim$ alt + noise {#sec-HRmod2}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{Heart rate}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Altitude}_i(t) +
+\beta_2(t) \cdot \text{Noise}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="50%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta1_GET.png")
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_N200/beta2_GET.png")
+```
+:::
+:::
+
+## HR $\sim$ alt + noise + body\_temp {#sec-HRmod3}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{Heart rate}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Altitude}_i(t) +
+\beta_2(t) \cdot \text{Noise}_i(t) + 
+\beta_3(t) \cdot \text{body\_temperature}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2, 3$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta1_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta2_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Body temperature**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta3_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_temp_body_ENT_N200/beta3_GET.png")
+```
+:::
+:::
+
+## HR $\sim$ alt + noise + speed {#sec-HRmod4}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{Heart rate}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Altitude}_i(t) +
+\beta_2(t) \cdot \text{Noise}_i(t) + 
+\beta_3(t) \cdot \text{speed}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2, 3$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta1_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta2_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Speed**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta3_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_HR_alt_noise_speed_N200/beta3_GET.png")
+```
+:::
+:::
+
+# Models for EDA {#sec-EDAmodels}
+
+In this section, we analyze the functional models for [electrodermal activity]{.darkblue}. Similarly to the previous @sec-HRmodels, we identify the most suitable candidates from the significant models (those with permutation $F$-test $p$-value ${}< 0.05$). The following section presents the results of these selected models.
+
+As in @sec-HRmodels, we begin by listing all fitted models ([**All considered models**]{.panelorange}). More complex models are not included, as they are computationally demanding and in some cases fail due to singularities. For each model, we report key numerical characteristics: the number of curves ($N$), $RMSE$, functional $R^2$ descriptors, and the $F$-test result. The models are [ordered by decreasing maximum $R^2$]{.darkblue}.
+
+In the **Model formula** column, covariates are color-coded according to their significance assessed by the global envelope test -- [red for $p < 0.05$]{.myred}, [blue for $p \in [0.05, 0.1)$]{.myblue}.
+
+Next, we filter only those models significant under the functional permutation $F$-test ([**Significant models**]{.panelorange}). From this subset, we select a few final models that we consider most appropriate for describing EDA dynamics over time ([**Final selected models**]{.panelorange}). There are only two significant functional models and we select both of them.
+
+```{r}
+#| echo: false
+# We load the EDA data and rename the column model to contain which covariate is significant 
+data_EDA <- read.csv("Z:/GAMU-STRECITY/04_Codes/FDA/model_comparison_EDA_CENTERED.csv") 
+
+data_EDA <- data_EDA %>% 
+  mutate(model = c(
+  "EDA $\\sim$ altitude + [noise]{.myblue} + [body_temperature]{.myred} + PM1",  ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + [body_temperature]{.myred} + [PM25]{.myblue}",  ##
+  "EDA $\\sim$ altitude + noise + [temperature]{.myred} + [acceleration]{.myred}",  ##
+  "EDA $\\sim$ altitude + noise + [temperature]{.myred} + steps",               ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + temperature (Entrant)",             ##
+  "EDA $\\sim$ altitude + [noise]{.myblue} + [temperature]{.myblue} + speed",   ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + [temperature]{.myred}",             ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + temperature + body_temperature",    ##
+  "EDA $\\sim$ altitude + noise + [speed]{.myred} + PM1",                       ##
+  "EDA $\\sim$ altitude + [noise]{.myblue} + [speed]{.myred} + PM25",           ##
+  "EDA $\\sim$ [noise]{.myred} + temperature + [body_temperature]{.myblue}",    ##
+  "EDA $\\sim$ altitude + noise + [speed]{.myblue}",                            ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + [acceleration]{.myblue} + PM1",     ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + [acceleration]{.myblue} + PM25",    ##
+  "EDA $\\sim$ altitude + [noise]{.myblue} + [body_temperature]{.myblue}",      ##
+  "EDA $\\sim$ altitude + body_temperature",                                    ##
+  "EDA $\\sim$ air_pressure + noise + temperature",                             ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + PM1",                               ##
+  "EDA $\\sim$ altitude + noise + acceleration",                                ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + PM25",                              ##
+  "EDA $\\sim$ [altitude]{.myblue} + [noise]{.myblue} + [Sex]{.myblue}",        ##
+  "EDA $\\sim$ altitude + noise + steps",                                       ##
+  "EDA $\\sim$ altitude + [noise]{.myred}",                                     ##        
+  "EDA $\\sim$ altitude + [temperature]{.myred} + PM1",                         ##
+  "EDA $\\sim$ altitude + [temperature]{.myred} + PM25",                        ##
+  "EDA $\\sim$ air_pressure + noise",                                           ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + steps + PM25",                      ##
+  "EDA $\\sim$ altitude + [noise]{.myred} + steps + PM1"                        ##
+))
+```
+
+::: panel-tabset
+## [All considered models]{.panelorange}
+
+Almost all functional models include either air pressure or altitude, and most also incorporate an activity-related predictor such as acceleration, speed, or steps. In contrast to the HR functional models, temperature-related variables -- *air temperature* or *body temperature* -- are also frequently included.
+
+```{r}
+#| echo: false
+df_tab <- data_EDA %>% 
+  select(!c(qval, Fobs)) %>% 
+  arrange(desc(maxR2))
+
+df_tab[df_tab$X %in% c(24, 29), 2] <- kableExtra::cell_spec(df_tab[df_tab$X %in% c(24, 29), 2], background = '#cce5ff')
+
+df_tab %>% knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Note that models in the first half of the table above having high maximum $R^2$ are based on a small number of train curves ($N = 14, 18, 19$). In the contrary, the second half of this table contains only the models with $N>20$.
+
+## [Significant models]{.panelorange}
+
+Final selected models are [highlighted in blue]{style="background-color:#cce5ff; padding:0.1em 0.2em; border-radius:2px;"}.
+
+```{r}
+#| echo: false
+#| results: asis
+df_tab <- data_EDA %>% 
+  select(!c(qval, Fobs)) %>% 
+  filter(pval < 0.05) 
+
+df_tab[df_tab$X %in% c(24, 29), 2] <- kableExtra::cell_spec(df_tab[df_tab$X %in% c(24, 29), 2], background = '#cce5ff')
+
+df_tab %>% knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+## [Final selected models]{.panelorange}
+
+```{r}
+#| echo: false
+data_EDA %>% 
+  select(!c(qval, Fobs)) %>% 
+  filter(X %in% c(24, 29)) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
+               col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+We selected the following models:
+
+- **EDA $\sim$ altitude + [noise]{.myred} + [temperature]{.myred}** -- this model achieves the lowest $RMSE$ among all significant candidates and the lowest $p$-value of the functional $F$-test among all models. The inclusion of the non-significant (according to GET) covariate *altitude* improves the fit and serves to include information about the route. Overall, the model demonstrates strong explanatory power, with both a high integrated $R^2$ and a maximum $R^2$. Moreover, it is trained on a larger sample than the latter model.
+- **EDA $\sim$ [noise]{.myred} + temperature + [body\_temperature]{.myblue}** -- we omit the covariate *altitude* from the model above and add the covariate *body\_temperature*. This model achieves the highest maximum $R^2$ and also integrated $R^2$, while also being significant ($p = 0.040$). 
+
+We distinguish two models with the same covariates -- one with *(Empatica)* and one with *(Entrant)* -- because air temperature was measured by two different devices. To maximize the sample size in the models, we choose to use the *Empatica* measurements.
+:::
+
+## EDA $\sim$ alt + noise + temp {#sec-EDAmod1}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{EDA}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Altitude}_i(t) +
+\beta_2(t) \cdot \text{Noise}_i(t) + 
+\beta_3(t) \cdot \text{Temperature}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2, 3$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta1_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta2_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Temperature**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta3_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_alt_noise_tempEmpatica_CENTERED/beta3_GET.png")
+```
+:::
+:::
+
+## EDA $\sim$ noise + temp + body\_temp {#sec-EDAmod2}
+
+The formula for this functional linear model is of the form:
+
+::: {.mathbox}
+$$
+\text{EDA}_i(t) = \beta_0(t) + 
+\beta_1(t) \cdot \text{Noise}_i(t) + 
+\beta_2(t) \cdot \text{Temperature}_i(t) + 
+\beta_3(t) \cdot \text{Body temperature}_i(t) + \varepsilon_i(t).
+$$ 
+:::
+
+Numerical characteristics for the model:
+
+```{r}
+#| echo: false
+#| results: asis
+load("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/model.RData")
+
+model_2$df_res_metrics[, 1:4] %>% 
+  as.data.frame(row.names = c("model characteristics")) %>% 
+  knitr::kable(format = 'simple', escape = FALSE, row.names = TRUE,
+               col.names = c("$RMSE$", "Maximum $R^2$",
+                             "Integrated $R^2$", "$p$-value"))
+```
+
+Observed and estimated outcome trajectories, graph of the functional $R^2$ and $F$-statistic:
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Observed and estimated trajectories."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/model_samples.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+ 
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/model_samples.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $R^2$."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/R2.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/R2.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph of the functional $F$-statistic."
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/F_res.pdf"
+# magick::image_read_pdf(image_path) %>%
+#   magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png")) 
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/F_res.png")
+```
+
+:::
+:::
+
+Finally, graphs of the estimated functional regression parameters $\widehat{\beta_j}(t), j = 1, 2, 3$ for intercept and covariates included in the model, with bootstrap CI and global envelope.
+
+::: columns
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Altitude**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta1_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta1_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Noise**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta2_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta2_GET.png")
+```
+:::
+
+::: {.column width="33%"}
+
+```{r}
+#| fig-width: 8
+#| fig-height: 6
+#| echo: false
+#| fig-cap: "Graph for **Temperature**"
+# image_path <- "Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta3_GET.pdf"
+# magick::image_read_pdf(image_path) %>%
+#  magick::image_write(substr(image_path, 1, nchar(image_path) - 4) %>% paste0(".png"))
+
+knitr::include_graphics("Z:/GAMU-STRECITY/04_Codes/FDA/figures/model_EDA_noise_temp_bodyTemp_CENTERED/beta3_GET.png")
+```
+:::
+:::
+
+# Conclusion
+
+To sum up the [functional analysis]{.darkblue} performed for Heart Rate and Electrodermal Activity, here are the key points of the process:
+
+1. For each target functional variable (HR and EDA), we fit around [30 functional linear models]{.darkblue}.
+2. For each functional model, we calculate a few [numerical characteristics]{.darkblue} to assess the quality of the model fit and to be able to compare models.
+3. From all models for HR and EDA, we filter only those that are [significant]{.darkblue} ($p$-value ${}<0.05$) according to the *permutation $F$-test* (@sec-Ftest).
+4. From the significant models for HR and EDA, we select a small number of models according to the [highest maximum $R^2$]{.darkblue} (@sec-R2).
+5. For the selected models, we assess the [significance of each functional covariate]{.darkblue} separately using the *global envelope test* (@sec-GET). 
+
+To sum up the results of our analysis, here is a list of key findings:
+
+- for modelling [**HR**]{.myred}, we select 4 models (@sec-HRmodels):
+  - covariates **altitude** and **noise** have a significant effect on the value of heart rate (@sec-HRmod1 -- @sec-HRmod4),
+  - covariates related to movement (**speed**, **steps**) also have a significant effect on the value of heart rate (@sec-HRmod1, @sec-HRmod2),
+  - we are able to interpret *where* the effect is significant (identify the time domain responsible for rejection),
+  - the covariate of air pollution **PM25** has a non-significant effect on HR, but improves the quality of the overall fit (@sec-HRmod1).
+- for modelling [**EDA**]{.myred}, we select 2 models (@sec-EDAmodels):
+  - the covariate **noise** has a significant effect on the values of EDA (@sec-EDAmod1, @sec-EDAmod2),
+  - the covariate **air temperature** has a significant effect on EDA in one model (@sec-EDAmod1),
+  - the covariate **body temperature** has a near-significant effect on EDA (@sec-EDAmod2),
+  - again, we are able to interpret *where* the effect is significant (identify the time domain responsible for rejection),
+  - the covariate **altitude** has a non-significant effect on EDA, but improves the fit and includes information about the route (@sec-EDAmod1).
