@@ -6,5 +6,6 @@ authors:
   orcid: "https://orcid.org/0009-0004-9770-6321"
 title: "SCENERY-results: Model outputs and results"
 version: 1.0.0
+doi: 10.5281/zenodo.18543097
 date-released: 2026-02-09
 url: "https://github.com/SCENERY-MUNI/SCENERY-results"
