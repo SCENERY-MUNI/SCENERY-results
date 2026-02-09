@@ -19,7 +19,7 @@ If you use this code, please cite the associated paper:
 
 The archived version of this specific repository can be found on Zenodo:
 
-> To be updated later.
+> [![DOI](https://doi.org/10.5281/zenodo.18543097.svg)](https://doi.org/10.5281/zenodo.18543097)
 
 ### License
 
