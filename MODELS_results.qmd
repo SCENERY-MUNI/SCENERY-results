@@ -89,12 +89,12 @@ This document is intended as a concise summary of the selected models. For a det
 - smoothing, and
 - model fitting,
 
-please refer to [our Github page: SCENERY-preprocessing](https://scenery-muni.github.io/SCENERY-preprocessing/) or [our Github page: SCENERY-models](https://scenery-muni.github.io/SCENERY-models/).
+please refer to our Github page: [SCENERY-preprocessing](https://scenery-muni.github.io/SCENERY-preprocessing/) or [SCENERY-models](https://scenery-muni.github.io/SCENERY-models/).
 :::
 
 # Introduction to functional models
 
-To model the functional responses (HR, EDA) based on other functional covariates (noise, altitude, speed, pollution, etc.), we use the [concurrent functional linear model]{.darkblue}.
+To model the functional responses (HR, EDA) based on other functional covariates (noise, slope, speed, pollution, etc.), we use the [concurrent functional linear model]{.darkblue}.
 
 ::: {.callout-tip}
 ## Concurrent Functional Linear Model
@@ -102,7 +102,7 @@ This model relates the value of the outcome $y$ at time $t$ (i.e., $y_i(t)$) to 
 $$
 y_i(t) = \beta_0(t) + \sum_{j=1}^K \beta_j(t) z_{ij}(t) + \varepsilon_i(t),
 $$ {#eq-model} 
-where $K$ is the number of covariates, and $\varepsilon_i(t)$ denotes a random error term for subject $i = 1, 2, \dots, n$. 
+where $K$ is the number of covariates, and $\varepsilon_i(t)$ denotes a random error term for subject $i = 1, 2, \dots, N$. 
 :::
 
 All models presented in @sec-HRmodels and @sec-EDAmodels follow the general form in @eq-model. After preprocessing the raw data into functional form (including registration and smoothing), the models were fitted using the `fRegress()` function from the `fda` package. 
@@ -346,6 +346,8 @@ data_HR %>%
                              "Integrated $R^2$", "$p$-value", "$q$-value", "$F$-statistic"))
 ```
 
+Note that models in the first half of the table above having high maximum $R^2$ are based on a small number of participants ($N = 8, 16, 18$). In the contrary, the second half of this table contains primarily models with $N>20$.
+
 ## [Significant models]{.panelorange}
 
 Final selected models are [highlighted in blue]{style="background-color:#cce5ff; padding:0.1em 0.2em; border-radius:2px;"}.
@@ -377,6 +379,12 @@ data_HR %>%
 ```
 
 :::
+
+We selected the following models:
+
+- **HR $\sim$  [slope]{.myblue} + [speed]{.myred}** -- serves as a baseline model with only two predictors, yet still statistically significant. It is easy to interpret and provides a useful benchmark for evaluating the added value of more complex models. While not achieving the top $R^2$, it performs reasonably well given its simplicity.
+- **HR $\sim$  [slope]{.myred} + [speed]{.myred} + [noise]{.myred} + SkinT** -- an extension of the baseline model that introduces Noise and Wrist Skin Temperature as additional predictors. The effect of noise is statistically significant, whereas the effect of WST is not.
+- **HR $\sim$  slope + noise + [speed]{.myred} + PM2.5 + [Sex (B)]{.myblue}** -- this model achieves the highest maximum $R^2$ among all significant models. The model shows strong explanatory power, with both high integrated $R^2$ and low $RMSE$, and is overall highly significant. However, Speed is the only significant predictor in this model, possibly due to the small sample size ($N = 18$). 
 
 ## HR $\sim$ slope + speed {#sec-HRmod1}
 
@@ -841,7 +849,7 @@ data_EDA <- data_EDA %>%
 ::: panel-tabset
 ## [All considered models]{.panelorange}
 
-Almost all functional models include either slope or altitude, and most also incorporate an activity-related predictor such as acceleration, speed, or steps. In contrast to the HR functional models, temperature-related variables are also frequently included.
+Almost all functional models include either slope or altitude, and most also incorporate an activity-related predictor such as speed or acceleration. In contrast to the HR functional models, at least one of the temperature-related variables is included in all models for EDA.
 
 ```{r}
 #| echo: false
@@ -853,8 +861,6 @@ df_tab %>% knitr::kable(format = 'simple', escape = FALSE, row.names = FALSE,
                col.names = c("", "Model formula", "$N$", "$RMSE$", "Maximum $R^2$",
                              "Integrated $R^2$", "$p$-value", "$q$-value", "$F$-statistic"))
 ```
-
-Note that models in the first half of the table above having high maximum $R^2$ are based on a small number of train curves ($N = 8, 16, 18$). In the contrary, the second half of this table contains primarily models with $N>20$.
 
 ## [Significant models]{.panelorange}
 
@@ -888,6 +894,12 @@ data_EDA %>%
 ```
 
 :::
+
+We selected the following models:
+
+- **EDA $\sim$ [SkinT]{.myred} + [speed]{.myred}** -- serves as a baseline model with only two predictors, yet still statistically significant. It is easy to interpret and provides a useful benchmark for evaluating the added value of more complex models. While not achieving the top $R^2$, it performs reasonably well given its simplicity.
+- **EDA $\sim$ [speed]{.myred} + [SkinT]{.myred} + [noise]{.myblue}** -- an extension of the baseline model that introduces Noise as an additional predictor. The effect of noise does not reach statistical significance ($p=0.0624$).
+- **EDA $\sim$ [slope]{.myred} + [speed]{.myred} + [SkinT]{.myred} + [noise]{.myred} + Sex (B)** -- this model achieves the second-highest maximum $R^2$ among all significant models. The model shows strong explanatory power, with both high integrated $R^2$ and low $RMSE$, and is overall significant. Notably, the effects of all four functional covariates reach statistical significance despite the small sample size ($N = 18$).
 
 ## EDA $\sim$ speed + SkinT {#sec-EDAmod1}
 
@@ -1297,8 +1309,8 @@ To sum up the results of our analysis, here is a list of key findings:
   - we are able to interpret *where* the effects are significant (identify the time domain responsible for rejection),
   - the covariates of air pollution **PM2.5** and Sex have a non-significant effect on HR, but improves the quality of the overall fit (@sec-HRmod3).
 - for modelling [**EDA**]{.myred}, we select 3 models (@sec-EDAmodels):
-  - the covariate **skin temperature** has a significant effect on EDA in all models (@sec-EDAmod1 -- @sec-EDAmod3),
+  - the covariate **wrist skin temperature (WST)** has a significant effect on EDA in all models (@sec-EDAmod1 -- @sec-EDAmod3),
   - the covariate **speed** has a significant effect on EDA in all models (@sec-EDAmod1 -- @sec-EDAmod3),
   - the covariate **noise** has a significant or a near-significant effect on the values of EDA (@sec-EDAmod2, @sec-EDAmod3),
   - again, we are able to interpret *where* the effect is significant (identify the time domain responsible for rejection),
-  - the covariate **slope** has a significant effect on EDAin one model (@sec-EDAmod3).
+  - the covariate **slope** has a significant effect on EDA in one model (@sec-EDAmod3).

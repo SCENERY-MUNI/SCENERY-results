@@ -5,8 +5,8 @@
 <meta name="generator" content="quarto-1.10.18">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <meta name="author" content="Tomáš Pompa">
-<meta name="dcterms.date" content="2026-10-13">
-<title>SCENERY analysis – FDA</title>
+<meta name="dcterms.date" content="2026-10-15">
+<title>SCENERY</title>
 <style>
 
 span.smallcaps{font-variant: small-caps;}
@@ -2385,7 +2385,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Date</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">October 13, 2026</p>
+      <p class="date">October 15, 2026</p>
     </div>
   </div>
   
@@ -2417,12 +2417,12 @@ Note
 <li>smoothing, and</li>
 <li>model fitting,</li>
 </ul>
-<p>please refer to <a href="https://scenery-muni.github.io/SCENERY-preprocessing/">our Github page: SCENERY-preprocessing</a> or <a href="https://scenery-muni.github.io/SCENERY-models/">our Github page: SCENERY-models</a>.</p>
+<p>please refer to our Github page: <a href="https://scenery-muni.github.io/SCENERY-preprocessing/">SCENERY-preprocessing</a> or <a href="https://scenery-muni.github.io/SCENERY-models/">SCENERY-models</a>.</p>
 </div>
 </div>
 <section id="introduction-to-functional-models" class="level1" data-number="1"><h1 data-number="1">
 <span class="header-section-number">1</span> Introduction to functional models</h1>
-<p>To model the functional responses (HR, EDA) based on other functional covariates (noise, altitude, speed, pollution, etc.), we use the <span class="darkblue">concurrent functional linear model</span>.</p>
+<p>To model the functional responses (HR, EDA) based on other functional covariates (noise, slope, speed, pollution, etc.), we use the <span class="darkblue">concurrent functional linear model</span>.</p>
 <div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
@@ -2435,7 +2435,7 @@ Note
 <div class="callout-body-container callout-body">
 <p>This model relates the value of the outcome <span class="math inline">\(y\)</span> at time <span class="math inline">\(t\)</span> (i.e., <span class="math inline">\(y_i(t)\)</span>) to the values of covariates <span class="math inline">\(z_j\)</span> observed at the same time <span class="math inline">\(t\)</span> (i.e., <span class="math inline">\(z_{ij}(t)\)</span>). Formally, it can be written as <span id="eq-model"><span class="math display">\[
 y_i(t) = \beta_0(t) + \sum_{j=1}^K \beta_j(t) z_{ij}(t) + \varepsilon_i(t),
-\tag{1}\]</span></span> where <span class="math inline">\(K\)</span> is the number of covariates, and <span class="math inline">\(\varepsilon_i(t)\)</span> denotes a random error term for subject <span class="math inline">\(i = 1, 2, \dots, n\)</span>.</p>
+\tag{1}\]</span></span> where <span class="math inline">\(K\)</span> is the number of covariates, and <span class="math inline">\(\varepsilon_i(t)\)</span> denotes a random error term for subject <span class="math inline">\(i = 1, 2, \dots, N\)</span>.</p>
 </div>
 </div>
 <p>All models presented in <a href="#sec-HRmodels" class="quarto-xref">Section 2</a> and <a href="#sec-EDAmodels" class="quarto-xref">Section 3</a> follow the general form in <a href="#eq-model" class="quarto-xref">Equation 1</a>. After preprocessing the raw data into functional form (including registration and smoothing), the models were fitted using the <code>fRegress()</code> function from the <code>fda</code> package.</p>
@@ -3001,6 +3001,7 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </table>
 </div>
 </div>
+<p>Note that models in the first half of the table above having high maximum <span class="math inline">\(R^2\)</span> are based on a small number of participants (<span class="math inline">\(N = 8, 16, 18\)</span>). In the contrary, the second half of this table contains primarily models with <span class="math inline">\(N&gt;20\)</span>.</p>
 </div>
 <div id="tabset-1-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-1-2-tab">
 <p>Final selected models are <span style="background-color:#cce5ff; padding:0.1em 0.2em; border-radius:2px;">highlighted in blue</span>.</p>
@@ -3324,6 +3325,15 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </div>
 </div>
 </div>
+<p>We selected the following models:</p>
+<ul>
+<li>
+<strong>HR <span class="math inline">\(\sim\)</span> <span class="myblue">slope</span> + <span class="myred">speed</span></strong> – serves as a baseline model with only two predictors, yet still statistically significant. It is easy to interpret and provides a useful benchmark for evaluating the added value of more complex models. While not achieving the top <span class="math inline">\(R^2\)</span>, it performs reasonably well given its simplicity.</li>
+<li>
+<strong>HR <span class="math inline">\(\sim\)</span> <span class="myred">slope</span> + <span class="myred">speed</span> + <span class="myred">noise</span> + SkinT</strong> – an extension of the baseline model that introduces Noise and Wrist Skin Temperature as additional predictors. The effect of noise is statistically significant, whereas the effect of WST is not.</li>
+<li>
+<strong>HR <span class="math inline">\(\sim\)</span> slope + noise + <span class="myred">speed</span> + PM2.5 + <span class="myblue">Sex (B)</span></strong> – this model achieves the highest maximum <span class="math inline">\(R^2\)</span> among all significant models. The model shows strong explanatory power, with both high integrated <span class="math inline">\(R^2\)</span> and low <span class="math inline">\(RMSE\)</span>, and is overall highly significant. However, Speed is the only significant predictor in this model, possibly due to the small sample size (<span class="math inline">\(N = 18\)</span>).</li>
+</ul>
 <section id="sec-HRmod1" class="level2" data-number="2.1"><h2 data-number="2.1" class="anchored" data-anchor-id="sec-HRmod1">
 <span class="header-section-number">2.1</span> HR <span class="math inline">\(\sim\)</span> slope + speed</h2>
 <p>The formula for this functional linear model is of the form:</p>
@@ -3703,7 +3713,7 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </ul>
 <div class="tab-content">
 <div id="tabset-2-1" class="tab-pane active" role="tabpanel" aria-labelledby="tabset-2-1-tab">
-<p>Almost all functional models include either slope or altitude, and most also incorporate an activity-related predictor such as acceleration, speed, or steps. In contrast to the HR functional models, temperature-related variables are also frequently included.</p>
+<p>Almost all functional models include either slope or altitude, and most also incorporate an activity-related predictor such as speed or acceleration. In contrast to the HR functional models, at least one of the temperature-related variables is included in all models for EDA.</p>
 <div class="cell" data-layout-align="center">
 <div class="cell-output-display">
 <table class="caption-top table table-sm table-striped small">
@@ -4068,7 +4078,6 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </table>
 </div>
 </div>
-<p>Note that models in the first half of the table above having high maximum <span class="math inline">\(R^2\)</span> are based on a small number of train curves (<span class="math inline">\(N = 8, 16, 18\)</span>). In the contrary, the second half of this table contains primarily models with <span class="math inline">\(N&gt;20\)</span>.</p>
 </div>
 <div id="tabset-2-2" class="tab-pane" role="tabpanel" aria-labelledby="tabset-2-2-tab">
 <p>Final selected models are <span style="background-color:#cce5ff; padding:0.1em 0.2em; border-radius:2px;">highlighted in blue</span>.</p>
@@ -4304,6 +4313,15 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </div>
 </div>
 </div>
+<p>We selected the following models:</p>
+<ul>
+<li>
+<strong>EDA <span class="math inline">\(\sim\)</span> <span class="myred">SkinT</span> + <span class="myred">speed</span></strong> – serves as a baseline model with only two predictors, yet still statistically significant. It is easy to interpret and provides a useful benchmark for evaluating the added value of more complex models. While not achieving the top <span class="math inline">\(R^2\)</span>, it performs reasonably well given its simplicity.</li>
+<li>
+<strong>EDA <span class="math inline">\(\sim\)</span> <span class="myred">speed</span> + <span class="myred">SkinT</span> + <span class="myblue">noise</span></strong> – an extension of the baseline model that introduces Noise as an additional predictor. The effect of noise does not reach statistical significance (<span class="math inline">\(p=0.0624\)</span>).</li>
+<li>
+<strong>EDA <span class="math inline">\(\sim\)</span> <span class="myred">slope</span> + <span class="myred">speed</span> + <span class="myred">SkinT</span> + <span class="myred">noise</span> + Sex (B)</strong> – this model achieves the second-highest maximum <span class="math inline">\(R^2\)</span> among all significant models. The model shows strong explanatory power, with both high integrated <span class="math inline">\(R^2\)</span> and low <span class="math inline">\(RMSE\)</span>, and is overall significant. Notably, the effects of all four functional covariates reach statistical significance despite the small sample size (<span class="math inline">\(N = 18\)</span>).</li>
+</ul>
 <section id="sec-EDAmod1" class="level2" data-number="3.1"><h2 data-number="3.1" class="anchored" data-anchor-id="sec-EDAmod1">
 <span class="header-section-number">3.1</span> EDA <span class="math inline">\(\sim\)</span> speed + SkinT</h2>
 <p>The formula for this functional linear model is of the form:</p>
@@ -4679,11 +4697,11 @@ Figure 1: Observed and estimated trajectories of the outcome variable fitted by
 </li>
 <li>for modelling <span class="myred"><strong>EDA</strong></span>, we select 3 models (<a href="#sec-EDAmodels" class="quarto-xref">Section 3</a>):
 <ul>
-<li>the covariate <strong>skin temperature</strong> has a significant effect on EDA in all models (<a href="#sec-EDAmod1" class="quarto-xref">Section 3.1</a> – <a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>),</li>
+<li>the covariate <strong>wrist skin temperature (WST)</strong> has a significant effect on EDA in all models (<a href="#sec-EDAmod1" class="quarto-xref">Section 3.1</a> – <a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>),</li>
 <li>the covariate <strong>speed</strong> has a significant effect on EDA in all models (<a href="#sec-EDAmod1" class="quarto-xref">Section 3.1</a> – <a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>),</li>
 <li>the covariate <strong>noise</strong> has a significant or a near-significant effect on the values of EDA (<a href="#sec-EDAmod2" class="quarto-xref">Section 3.2</a>, <a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>),</li>
 <li>again, we are able to interpret <em>where</em> the effect is significant (identify the time domain responsible for rejection),</li>
-<li>the covariate <strong>slope</strong> has a significant effect on EDAin one model (<a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>).</li>
+<li>the covariate <strong>slope</strong> has a significant effect on EDA in one model (<a href="#sec-EDAmod3" class="quarto-xref">Section 3.3</a>).</li>
 </ul>
 </li>
 </ul></section></main><!-- /main column --><script id="quarto-html-after-body" type="application/javascript">
